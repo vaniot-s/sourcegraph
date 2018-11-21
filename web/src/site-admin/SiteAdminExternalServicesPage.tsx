@@ -33,7 +33,10 @@ class ExternalServiceNode extends React.PureComponent<ExternalServiceNodeProps, 
 interface Props extends RouteComponentProps<{}> {}
 interface State {}
 
-class FilteredExternalServiceConnection extends FilteredConnection<GQL.IExternalServiceConnection> {}
+class FilteredExternalServiceConnection extends FilteredConnection<
+    GQL.IExternalService,
+    Pick<ExternalServiceNodeProps, 'onDidUpdate'>
+> {}
 
 /**
  * A page displaying the external services on this site.
@@ -41,7 +44,7 @@ class FilteredExternalServiceConnection extends FilteredConnection<GQL.IExternal
 export class SiteAdminExternalServicesPage extends React.PureComponent<Props, State> {
     public state: State = {}
 
-    // private repositoryUpdates = new Subject<void>()
+    private updates = new Subject<void>()
 
     public componentDidMount(): void {
         eventLogger.logViewEvent('SiteAdminExternalServices')
@@ -51,7 +54,7 @@ export class SiteAdminExternalServicesPage extends React.PureComponent<Props, St
 
     public render(): JSX.Element | null {
         const nodeProps: Pick<ExternalServiceNodeProps, 'onDidUpdate'> = {
-            // onDidUpdate: this.onDidUpdateRepository,
+            onDidUpdate: this.onDidUpdateExternalServices,
         }
 
         return (
@@ -66,7 +69,7 @@ export class SiteAdminExternalServicesPage extends React.PureComponent<Props, St
                     queryConnection={this.queryExternalServices}
                     nodeComponent={ExternalServiceNode}
                     nodeComponentProps={nodeProps}
-                    // updates={this.repositoryUpdates}
+                    updates={this.updates}
                     history={this.props.history}
                     location={this.props.location}
                 />
@@ -101,5 +104,5 @@ export class SiteAdminExternalServicesPage extends React.PureComponent<Props, St
             })
         )
 
-    // private onDidUpdateRepository = () => this.repositoryUpdates.next()
+    private onDidUpdateExternalServices = () => this.updates.next()
 }
