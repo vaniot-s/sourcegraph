@@ -1,5 +1,7 @@
+import { AddIcon, SettingsIcon } from 'mdi-react'
 import * as React from 'react'
 import { RouteComponentProps } from 'react-router'
+import { Link } from 'react-router-dom'
 import { Observable, Subject } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { gql } from '../../../shared/src/graphql/graphql'
@@ -26,7 +28,22 @@ class ExternalServiceNode extends React.PureComponent<ExternalServiceNodeProps, 
     }
 
     public render(): JSX.Element | null {
-        return <li className="repository-node list-group-item py-2">{this.props.node.displayName}</li>
+        return (
+            <li className="external-service-node list-group-item py-2">
+                <div className="d-flex align-items-center justify-content-between">
+                    <div>{this.props.node.displayName}</div>
+                    <div>
+                        <Link
+                            className="btn btn-secondary btn-sm"
+                            to={`/external-services/${this.props.node.id}`}
+                            data-tooltip="External service settings"
+                        >
+                            <SettingsIcon className="icon-inline" /> Settings
+                        </Link>
+                    </div>
+                </div>
+            </li>
+        )
     }
 }
 
@@ -50,8 +67,6 @@ export class SiteAdminExternalServicesPage extends React.PureComponent<Props, St
         eventLogger.logViewEvent('SiteAdminExternalServices')
     }
 
-    // public componentWillUnmount(): void {}
-
     public render(): JSX.Element | null {
         const nodeProps: Pick<ExternalServiceNodeProps, 'onDidUpdate'> = {
             onDidUpdate: this.onDidUpdateExternalServices,
@@ -60,15 +75,22 @@ export class SiteAdminExternalServicesPage extends React.PureComponent<Props, St
         return (
             <div className="site-admin-external-services-page">
                 <PageTitle title="External Services - Admin" />
-                <h2>External Services</h2>
+                <div className="d-flex justify-content-between align-items-center">
+                    <h2>External Services</h2>
+                    <Link className="btn btn-primary ml-2" to="/external-services/new">
+                        <AddIcon className="icon-inline" /> Add external service
+                    </Link>
+                </div>
                 <p>Manage connections to external services.</p>
                 <FilteredExternalServiceConnection
-                    className="list-group list-group-flush mt-3"
+                    className="list-group list-group-flush"
                     noun="external service"
                     pluralNoun="external services"
                     queryConnection={this.queryExternalServices}
                     nodeComponent={ExternalServiceNode}
                     nodeComponentProps={nodeProps}
+                    hideSearch={true}
+                    noSummaryIfAllNodesVisible={true}
                     updates={this.updates}
                     history={this.props.history}
                     location={this.props.location}
