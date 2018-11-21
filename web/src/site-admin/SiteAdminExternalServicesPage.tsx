@@ -1,7 +1,7 @@
-import { map } from 'lodash'
 import * as React from 'react'
 import { RouteComponentProps } from 'react-router'
 import { Observable, Subject } from 'rxjs'
+import { map } from 'rxjs/operators'
 import { gql } from '../../../shared/src/graphql/graphql'
 import * as GQL from '../../../shared/src/graphql/schema'
 import { createAggregateError } from '../../../shared/src/util/errors'
@@ -83,7 +83,10 @@ export class SiteAdminExternalServicesPage extends React.PureComponent<Props, St
                 query ExternalServices($first: Int) {
                     externalServices(first: $first) {
                         nodes {
+                            id
+                            kind
                             displayName
+                            config
                         }
                         totalCount
                         pageInfo {
