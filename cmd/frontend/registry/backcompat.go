@@ -42,7 +42,8 @@ func init() {
 	// Synthesize extensions for language server in the site config "langservers" property, and keep
 	// them in sync.
 	var lastEnabledLangServers []*schema.Langservers
-	conf.Watch(func() {
+	// TODO(slimsag): make async
+	go conf.Watch(func() {
 		enabledLangServers := conf.EnabledLangservers()
 
 		// Nothing to do if the relevant config value didn't change.

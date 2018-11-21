@@ -19,7 +19,8 @@ func init() {
 		pc *schema.BuiltinAuthProvider
 		pi auth.Provider
 	)
-	conf.Watch(func() {
+	// TODO(slimsag): make async
+	go conf.Watch(func() {
 		mu.Lock()
 		defer mu.Unlock()
 

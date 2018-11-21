@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/sourcegraph/sourcegraph/pkg/conf"
 	"github.com/sourcegraph/sourcegraph/pkg/env"
 	"github.com/sourcegraph/sourcegraph/pkg/trace"
 	log15 "gopkg.in/inconshreveable/log15.v2"
@@ -25,10 +24,10 @@ import (
 // Note: these configuration options require service restarts to take effect.
 // Keep in sync with the pkg/conf.requireRestart list.
 var (
-	lightstepAccessToken         = conf.Get().LightstepAccessToken
-	lightstepProject             = conf.Get().LightstepProject
+	lightstepAccessToken         = "" //conf.Get().Core.LightstepAccessToken
+	lightstepProject             = "" //conf.Get().Core.LightstepProject
 	lightstepIncludeSensitive, _ = strconv.ParseBool(env.Get("LIGHTSTEP_INCLUDE_SENSITIVE", "", "send span logs to LightStep"))
-	useJaeger                    = conf.Get().UseJaeger
+	useJaeger                    = false //conf.Get().Core.UseJaeger
 	logColors                    = map[log15.Lvl]color.Attribute{
 		log15.LvlCrit:  color.FgRed,
 		log15.LvlError: color.FgRed,
