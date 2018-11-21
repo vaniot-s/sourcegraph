@@ -19,7 +19,8 @@ func init() {
 		pc *schema.HTTPHeaderAuthProvider
 		pi auth.Provider
 	)
-	conf.Watch(func() {
+	// TODO(slimsag): make async
+	go conf.Watch(func() {
 		mu.Lock()
 		defer mu.Unlock()
 
