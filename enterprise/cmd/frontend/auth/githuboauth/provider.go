@@ -50,8 +50,20 @@ func parseProvider(p *schema.GitHubAuthProvider, sourceCfg schema.AuthProviders)
 			oauth.SessionIssuer(&sessionIssuerHelper{
 				CodeHost: codeHost,
 				clientID: p.ClientID,
+				orgs:     stringset(p.Organizations),
 			}, sessionKey),
 			nil,
 		),
 	}), nil
+}
+
+func stringset(s []string) map[string]struct{} {
+	if s == nil {
+		return nil
+	}
+	m := make(map[string]struct{})
+	for _, v := range s {
+		m[v] = struct{}{}
+	}
+	return m
 }

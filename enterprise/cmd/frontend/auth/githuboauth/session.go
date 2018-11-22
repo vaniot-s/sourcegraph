@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/dghubble/gologin/github"
+	githublogin "github.com/dghubble/gologin/github"
 	"github.com/pkg/errors"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/db"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/external/auth"
@@ -20,16 +20,33 @@ import (
 type sessionIssuerHelper struct {
 	*githubsvc.CodeHost
 	clientID string
+	orgs     map[string]struct{}
 }
 
 func (s *sessionIssuerHelper) GetOrCreateUser(ctx context.Context, token *oauth2.Token) (actr *actor.Actor, safeErrMsg string, err error) {
-	ghUser, err := github.UserFromContext(ctx)
+	ghUser, err := githublogin.UserFromContext(ctx)
 	if err != nil {
 		return nil, "Could not read GitHub user from callback request.", errors.Wrap(err, "could not read user from context")
 	}
 
-	// // NEXT: check org membership
-	// ghUser.OrganizationsURL
+	// check org membership if orgs specified
+	if len(s.orgs) > 0 {
+		apiURL, _ := githubsvc.APIRoot(s.BaseURL())
+		userOrgs, err := githubsvc.NewClient(apiURL, "", nil).ListOrgs(ctx, token.AccessToken)
+		if err != nil {
+			return nil, "Failed to fetch GitHub user orgs.", errors.Wrap(err, "failed to fetch GitHub user orgs")
+		}
+		hasAcceptedOrg := false
+		for _, org := range userOrgs {
+			if _, ok := s.orgs[org.Login]; ok {
+				hasAcceptedOrg = true
+				break
+			}
+		}
+		if !hasAcceptedOrg {
+			return nil, "GitHub user was not part of accepted organization.", errors.New("GitHub user was not part of accepted organization")
+		}
+	}
 
 	login, err := auth.NormalizeUsername(deref(ghUser.Login))
 	if err != nil {
