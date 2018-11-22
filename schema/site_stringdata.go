@@ -654,12 +654,6 @@ const SiteSchemaJSON = `{
           "description": "The TTL of the repository permissions data cache.",
           "type": "string",
           "default": "3h"
-        },
-        "organizations": {
-          "description":
-            "A list of GitHub organization names. If specified, only GitHub users that are members of the specified orgs will be allowed to authenticate",
-          "type": "array",
-          "items": { "type": "string" }
         }
       }
     },
@@ -1158,7 +1152,13 @@ const SiteSchemaJSON = `{
           "description":
             "The Client Secret of the GitHub OAuth app, accessible from https://github.com/settings/developers (or the same path on GitHub Enterprise)."
         },
-        "displayName": { "$ref": "#/definitions/AuthProviderCommon/properties/displayName" }
+        "displayName": { "$ref": "#/definitions/AuthProviderCommon/properties/displayName" },
+        "organizations": {
+          "description":
+            "A list of GitHub organization names. If specified, only GitHub users that are members of the specified orgs will be allowed to authenticate.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
       }
     },
     "GitLabAuthProvider": {

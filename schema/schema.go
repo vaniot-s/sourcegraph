@@ -164,17 +164,17 @@ type Extensions struct {
 
 // GitHubAuthProvider description: Configures the GitHub (or GitHub Enterprise) OAuth authentication provider for SSO. In addition to specifying this configuration object, you must also create a OAuth App on your GitHub instance: https://developer.github.com/apps/building-oauth-apps/creating-an-oauth-app/. When a user signs into Sourcegraph or links their GitHub account to their existing Sourcegraph account, GitHub will prompt the user for the repo scope.
 type GitHubAuthProvider struct {
-	ClientID     string `json:"clientID"`
-	ClientSecret string `json:"clientSecret"`
-	DisplayName  string `json:"displayName,omitempty"`
-	Type         string `json:"type"`
-	Url          string `json:"url,omitempty"`
+	ClientID      string   `json:"clientID"`
+	ClientSecret  string   `json:"clientSecret"`
+	DisplayName   string   `json:"displayName,omitempty"`
+	Organizations []string `json:"organizations,omitempty"`
+	Type          string   `json:"type"`
+	Url           string   `json:"url,omitempty"`
 }
 
 // GitHubAuthorization description: If non-null, enforces GitHub repository permissions. This requires that there is an item in the `auth.providers` field of type "github" with the same `url` field as specified in this `GitHubConnection`.
 type GitHubAuthorization struct {
-	Organizations []string `json:"organizations,omitempty"`
-	Ttl           string   `json:"ttl,omitempty"`
+	Ttl string `json:"ttl,omitempty"`
 }
 type GitHubConnection struct {
 	Authorization               *GitHubAuthorization `json:"authorization,omitempty"`

@@ -1,6 +1,7 @@
 package githuboauth
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"sync"
@@ -26,7 +27,7 @@ func init() {
 
 	var (
 		mu  sync.Mutex
-		cur = map[schema.GitHubAuthProvider]auth.Provider{} // tracks current mapping of valid config to auth.Provider
+		cur = map[githubAuthProviderKey]auth.Provider{} // tracks current mapping of valid config to auth.Provider
 	)
 
 	go func() {
@@ -35,7 +36,7 @@ func init() {
 			defer mu.Unlock()
 
 			if !conf.Get().ExperimentalFeatures.GithubAuth {
-				new := map[schema.GitHubAuthProvider]auth.Provider{}
+				new := map[githubAuthProviderKey]auth.Provider{}
 				updates := make(map[auth.Provider]bool)
 				for c, p := range cur {
 					if _, ok := new[c]; !ok {
@@ -73,8 +74,15 @@ func init() {
 	})
 }
 
-func parseConfig(cfg *schema.SiteConfiguration) (providers map[schema.GitHubAuthProvider]auth.Provider, problems []string) {
-	providers = make(map[schema.GitHubAuthProvider]auth.Provider)
+type githubAuthProviderKey string
+
+func mapKey(g *schema.GitHubAuthProvider) githubAuthProviderKey {
+	b, _ := json.Marshal(g)
+	return githubAuthProviderKey(b)
+}
+
+func parseConfig(cfg *schema.SiteConfiguration) (providers map[githubAuthProviderKey]auth.Provider, problems []string) {
+	providers = make(map[githubAuthProviderKey]auth.Provider)
 	for _, pr := range cfg.AuthProviders {
 		if pr.Github == nil {
 			continue
@@ -83,7 +91,7 @@ func parseConfig(cfg *schema.SiteConfiguration) (providers map[schema.GitHubAuth
 		provider, providerProblems := parseProvider(pr.Github, pr)
 		problems = append(problems, providerProblems...)
 		if provider != nil {
-			providers[*pr.Github] = provider
+			providers[mapKey(pr.Github)] = provider
 		}
 	}
 	return providers, problems

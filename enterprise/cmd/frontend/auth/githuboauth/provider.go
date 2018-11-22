@@ -23,11 +23,15 @@ func parseProvider(p *schema.GitHubAuthProvider, sourceCfg schema.AuthProviders)
 		problems = append(problems, fmt.Sprintf("Could not parse GitHub URL %q. You will not be able to login via this GitHub instance.", rawURL))
 		return nil, problems
 	}
+	scopes := []string{"repo"}
+	if len(p.Organizations) > 0 {
+		scopes = append(scopes, "read:org")
+	}
 	codeHost := githubcodehost.NewCodeHost(parsedURL)
 	oauth2Cfg := oauth2.Config{
 		ClientID:     p.ClientID,
 		ClientSecret: p.ClientSecret,
-		Scopes:       []string{"repo"},
+		Scopes:       scopes,
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  codeHost.BaseURL().ResolveReference(&url.URL{Path: "/login/oauth/authorize"}).String(),
 			TokenURL: codeHost.BaseURL().ResolveReference(&url.URL{Path: "/login/oauth/access_token"}).String(),

@@ -28,6 +28,9 @@ func (s *sessionIssuerHelper) GetOrCreateUser(ctx context.Context, token *oauth2
 		return nil, "Could not read GitHub user from callback request.", errors.Wrap(err, "could not read user from context")
 	}
 
+	// // NEXT: check org membership
+	// ghUser.OrganizationsURL
+
 	login, err := auth.NormalizeUsername(deref(ghUser.Login))
 	if err != nil {
 		return nil, fmt.Sprintf("Error normalizing the username %q. See https://docs.sourcegraph.com/admin/auth/#username-normalization.", login), err
