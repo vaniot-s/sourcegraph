@@ -1,3 +1,7 @@
 package github
 
-// TODO
+import "testing"
+
+func TestListOrgs(t *testing.T) {
+	// TODO
+}

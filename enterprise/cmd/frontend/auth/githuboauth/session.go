@@ -72,7 +72,6 @@ func (s *sessionIssuerHelper) GetOrCreateUser(ctx context.Context, token *oauth2
 		return nil, safeErrMsg, err
 	}
 	return actor.FromUser(userID), "", nil
-
 }
 
 func (s *sessionIssuerHelper) DeleteStateCookie(w http.ResponseWriter) {
