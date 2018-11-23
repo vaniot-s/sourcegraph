@@ -13,6 +13,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type wantProvider struct {
+	cfg      schema.GitHubAuthProvider
+	provider auth.Provider
+}
+
 func Test_parseConfig(t *testing.T) {
 	spew.Config.DisablePointerAddresses = true
 	spew.Config.SortKeys = true
@@ -24,13 +29,13 @@ func Test_parseConfig(t *testing.T) {
 	tests := []struct {
 		name          string
 		args          args
-		wantProviders map[schema.GitHubAuthProvider]auth.Provider
+		wantProviders []wantProvider
 		wantProblems  []string
 	}{
 		{
 			name:          "No configs",
 			args:          args{cfg: &schema.SiteConfiguration{}},
-			wantProviders: map[schema.GitHubAuthProvider]auth.Provider{},
+			wantProviders: []wantProvider{},
 		},
 		{
 			name: "1 GitHub.com config",
@@ -45,14 +50,15 @@ func Test_parseConfig(t *testing.T) {
 					},
 				}},
 			}},
-			wantProviders: map[schema.GitHubAuthProvider]auth.Provider{
-				schema.GitHubAuthProvider{
+			wantProviders: []wantProvider{{
+				cfg: schema.GitHubAuthProvider{
 					ClientID:     "my-client-id",
 					ClientSecret: "my-client-secret",
 					DisplayName:  "GitHub",
 					Type:         "github",
 					Url:          "https://github.com",
-				}: provider("https://github.com/", oauth2.Config{
+				},
+				provider: provider("https://github.com/", oauth2.Config{
 					ClientID:     "my-client-id",
 					ClientSecret: "my-client-secret",
 					Endpoint: oauth2.Endpoint{
@@ -61,7 +67,7 @@ func Test_parseConfig(t *testing.T) {
 					},
 					Scopes: []string{"repo"},
 				}),
-			},
+			}},
 		},
 		{
 			name: "2 GitHub configs",
@@ -84,14 +90,15 @@ func Test_parseConfig(t *testing.T) {
 					},
 				}},
 			}},
-			wantProviders: map[schema.GitHubAuthProvider]auth.Provider{
-				schema.GitHubAuthProvider{
+			wantProviders: []wantProvider{{
+				cfg: schema.GitHubAuthProvider{
 					ClientID:     "my-client-id",
 					ClientSecret: "my-client-secret",
 					DisplayName:  "GitHub",
 					Type:         "github",
 					Url:          "https://github.com",
-				}: provider("https://github.com/", oauth2.Config{
+				},
+				provider: provider("https://github.com/", oauth2.Config{
 					ClientID:     "my-client-id",
 					ClientSecret: "my-client-secret",
 					Endpoint: oauth2.Endpoint{
@@ -100,13 +107,15 @@ func Test_parseConfig(t *testing.T) {
 					},
 					Scopes: []string{"repo"},
 				}),
-				schema.GitHubAuthProvider{
+			}, {
+				cfg: schema.GitHubAuthProvider{
 					ClientID:     "my-client-id-2",
 					ClientSecret: "my-client-secret-2",
 					DisplayName:  "GitHub Enterprise",
 					Type:         "github",
 					Url:          "https://mycompany.com",
-				}: provider("https://mycompany.com/", oauth2.Config{
+				},
+				provider: provider("https://mycompany.com/", oauth2.Config{
 					ClientID:     "my-client-id-2",
 					ClientSecret: "my-client-secret-2",
 					Endpoint: oauth2.Endpoint{
@@ -115,7 +124,7 @@ func Test_parseConfig(t *testing.T) {
 					},
 					Scopes: []string{"repo"},
 				}),
-			},
+			}},
 		},
 	}
 	for _, tt := range tests {
@@ -127,17 +136,17 @@ func Test_parseConfig(t *testing.T) {
 					p.ProviderOp.Login, p.ProviderOp.Callback = nil, nil
 				}
 			}
-			for k, p := range tt.wantProviders {
-				k := k
+			for _, wp := range tt.wantProviders {
+				k, p := wp.cfg, wp.provider
 				if q, ok := p.(*oauth.Provider); ok {
 					q.SourceConfig = schema.AuthProviders{Github: &k}
 				}
 			}
-			if !reflect.DeepEqual(gotProviders, tt.wantProviders) {
+			if wantProviders := p(tt.wantProviders); !reflect.DeepEqual(gotProviders, wantProviders) {
 				dmp := diffmatchpatch.New()
 
-				t.Errorf("parseConfig() gotProviders != tt.wantProviders, diff:\n%s",
-					dmp.DiffPrettyText(dmp.DiffMain(spew.Sdump(tt.wantProviders), spew.Sdump(gotProviders), false)),
+				t.Errorf("parseConfig() gotProviders != wantProviders, diff:\n%s",
+					dmp.DiffPrettyText(dmp.DiffMain(spew.Sdump(wantProviders), spew.Sdump(gotProviders), false)),
 				)
 			}
 			if !reflect.DeepEqual(gotProblems, tt.wantProblems) {
@@ -156,4 +165,15 @@ func provider(serviceID string, oauth2Config oauth2.Config) *oauth.Provider {
 		ServiceType:  githubcodehost.ServiceType,
 	}
 	return &oauth.Provider{ProviderOp: op}
+}
+
+func p(providers []wantProvider) map[githubAuthProviderKey]auth.Provider {
+	if providers == nil {
+		return nil
+	}
+	m := make(map[githubAuthProviderKey]auth.Provider)
+	for _, wp := range providers {
+		m[mapKey(&wp.cfg)] = wp.provider
+	}
+	return m
 }

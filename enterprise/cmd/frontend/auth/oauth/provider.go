@@ -17,6 +17,7 @@ import (
 	log15 "gopkg.in/inconshreveable/log15.v2"
 )
 
+// Provider provides configuration and endpoints for handling the OAuth client flow.
 type Provider struct {
 	ProviderOp
 

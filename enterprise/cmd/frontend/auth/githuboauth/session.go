@@ -13,12 +13,12 @@ import (
 	"github.com/sourcegraph/sourcegraph/enterprise/cmd/frontend/auth/oauth"
 	"github.com/sourcegraph/sourcegraph/pkg/actor"
 	"github.com/sourcegraph/sourcegraph/pkg/extsvc"
-	githubsvc "github.com/sourcegraph/sourcegraph/pkg/extsvc/github"
+	"github.com/sourcegraph/sourcegraph/pkg/extsvc/github"
 	"golang.org/x/oauth2"
 )
 
 type sessionIssuerHelper struct {
-	*githubsvc.CodeHost
+	*github.CodeHost
 	clientID string
 	orgs     map[string]struct{}
 }
@@ -31,8 +31,8 @@ func (s *sessionIssuerHelper) GetOrCreateUser(ctx context.Context, token *oauth2
 
 	// check org membership if orgs specified
 	if len(s.orgs) > 0 {
-		apiURL, _ := githubsvc.APIRoot(s.BaseURL())
-		userOrgs, err := githubsvc.NewClient(apiURL, "", nil).ListOrgs(ctx, token.AccessToken)
+		apiURL, _ := github.APIRoot(s.BaseURL())
+		userOrgs, err := github.NewClient(apiURL, "", nil).ListOrgs(ctx, token.AccessToken)
 		if err != nil {
 			return nil, "Failed to fetch GitHub user orgs.", errors.Wrap(err, "failed to fetch GitHub user orgs")
 		}
