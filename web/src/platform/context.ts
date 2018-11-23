@@ -3,7 +3,7 @@ import { distinctUntilChanged, map } from 'rxjs/operators'
 import ExtensionHostWorker from 'worker-loader!./extensionHost.worker'
 import { InitData } from '../../../shared/src/api/extension/extensionHost'
 import { SettingsCascade } from '../../../shared/src/api/protocol'
-import { MessageTransports } from '../../../shared/src/api/protocol/jsonrpc2/connection'
+import { createConnection, MessageTransports } from '../../../shared/src/api/protocol/jsonrpc2/connection'
 import { createWebWorkerMessageTransports } from '../../../shared/src/api/protocol/jsonrpc2/transports/webWorker'
 import { ConfiguredExtension } from '../../../shared/src/extensions/extension'
 import { gql } from '../../../shared/src/graphql/graphql'
@@ -66,16 +66,15 @@ export function createPlatformContext(): PlatformContext {
             ),
         queryLSP: requests => sendLSPHTTPRequests(requests),
         forceUpdateTooltip: () => Tooltip.forceUpdate(),
-        createMessageTransports: (extension, settingsCascade) =>
-            Promise.resolve(createMessageTransports(extension, settingsCascade)),
+        createMessageTransports,
     }
     return context
 }
 
-function createMessageTransports(
+async function createMessageTransports(
     extension: Pick<ConfiguredExtension, 'id' | 'manifest'>,
     settingsCascade: SettingsCascade<any>
-): MessageTransports {
+): Promise<MessageTransports> {
     if (!extension.manifest) {
         throw new Error(`unable to run extension ${JSON.stringify(extension.id)}: no manifest found`)
     }
@@ -87,15 +86,23 @@ function createMessageTransports(
 
     if (extension.manifest.url) {
         try {
+            // TODO!(sqs): move to 1 extension host, many extensions paradigm
             const worker = new ExtensionHostWorker()
             const initData: InitData = {
-                bundleURL: extension.manifest.url,
                 sourcegraphURL: window.context.externalURL,
                 clientApplication: 'sourcegraph',
                 settingsCascade,
             }
             worker.postMessage(initData)
-            return createWebWorkerMessageTransports(worker)
+            const transports = createWebWorkerMessageTransports(worker)
+
+            ////////////
+            const connection = createConnection(transports)
+            connection.listen()
+            await connection.sendRequest('activateExtension', [extension.manifest.url])
+            ////////////
+
+            return transports
         } catch (err) {
             console.error(err)
         }

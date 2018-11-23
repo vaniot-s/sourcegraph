@@ -1,4 +1,4 @@
-import { Subscription } from 'rxjs'
+import { Subscription, Unsubscribable } from 'rxjs'
 import * as sourcegraph from 'sourcegraph'
 import { createProxy, handleRequests } from '../common/proxy'
 import { SettingsCascade } from '../protocol'
@@ -38,9 +38,6 @@ const consoleLogger: Logger = {
  * Required information when initializing an extension host.
  */
 export interface InitData {
-    /** The URL to the JavaScript source file (that exports an `activate` function) for the extension. */
-    bundleURL: string
-
     /** @see {@link module:sourcegraph.internal.sourcegraphURL} */
     sourcegraphURL: string
 
@@ -55,28 +52,65 @@ export interface InitData {
 }
 
 /**
- * Creates the Sourcegraph extension host and the extension API handle (which extensions access with `import
- * sourcegraph from 'sourcegraph'`).
+ * Creates the extension host, which runs extensions. It is a Web Worker or other similar isolated
+ * JavaScript execution context. There is exactly 1 extension host, and it has zero or more
+ * extensions activated (and running).
  *
  * @param initData The information to initialize this extension host.
- * @param transports The message reader and writer to use for communication with the client. Defaults to
- *                   communicating using self.postMessage and MessageEvents with the parent (assuming that it is
- *                   called in a Web Worker).
- * @return The extension API.
+ * @param transports The message reader and writer to use for communication with the client.
+ *                   Defaults to communicating using self.postMessage and MessageEvents with the
+ *                   parent (assuming that it is called in a Web Worker).
+ * @return An unsubscribable to terminate the extension host.
  */
-export function createExtensionHost(
+export function startExtensionHost(
     initData: InitData,
     transports: MessageTransports = createWebWorkerMessageTransports()
-): typeof sourcegraph {
+): Unsubscribable {
     const connection = createConnection(transports, consoleLogger)
     connection.listen()
-    return createExtensionHandle(initData, connection)
-}
 
-function createExtensionHandle(initData: InitData, connection: Connection): typeof sourcegraph {
     const subscription = new Subscription()
     subscription.add(connection)
 
+    // Make `import 'sourcegraph'` or `require('sourcegraph')` return the extension API.
+    const api = createExtensionAPI(initData, connection)
+    ;(self as any).require = (modulePath: string): any => {
+        if (modulePath === 'sourcegraph') {
+            return api
+        }
+        // All other requires/imports in the extension's code should not reach here because their JS
+        // bundler should have resolved them locally.
+        throw new Error(`require: module not found: ${modulePath}`)
+    }
+
+    // Activate extensions when requested.
+    //
+    // TODO(sqs): add timeouts to prevent long-running activate or deactivate functions from
+    // significantly delaying other extensions.
+    connection.onRequest('activateExtension', async (bundleURL: string) => {
+        const { activation, deactivate } = activateExtension(bundleURL)
+        try {
+            await activation
+
+            // Deactivate the extension when the extension host terminates. There is no guarantee that this
+            // is called or that execution continues until it is finshed (i.e., the JavaScript execution
+            // context may be terminated before deactivation is completed).
+            subscription.add(deactivate)
+        } catch (err) {
+            // Deactivate the extension if an error was thrown, in case the extension was partially
+            // activated and acquired resources that should be released. The deactivate function
+            // might not be robust to being called when the extension was only partially activated,
+            // which might mean that it would not release all of the resources that were acquired
+            // (but it's still better than not running it at all).
+            await deactivate()
+            throw err
+        }
+    })
+
+    return subscription
+}
+
+function createExtensionAPI(initData: InitData, connection: Connection): typeof sourcegraph {
     // For debugging/tests.
     const sync = () => connection.sendRequest<void>('ping')
     connection.onRequest('ping', () => 'pong')
@@ -176,6 +210,72 @@ function createExtensionHandle(initData: InitData, connection: Connection): type
             updateContext: updates => context.updateContext(updates),
             sourcegraphURL: new URI(initData.sourcegraphURL),
             clientApplication: initData.clientApplication,
+        },
+    }
+}
+
+/**
+ * Loads an extension and invokes its `activate` function to start running it.
+ *
+ * It also sets up global hooks so that when the extension's code uses `require('sourcegraph')` and
+ * `import 'sourcegraph'`, it gets the extension API handle (the value specified in
+ * sourcegraph.d.ts).
+ *
+ * @param bundleURL The URL to the JavaScript source file (that exports an `activate` function) for
+ * the extension.
+ * @returns The extension's deactivate function (or a noop if it has none), and an activation
+ * promise that resolves when activation finishes.
+ * @throws An error if importScripts fails on the extension bundle.
+ */
+function activateExtension(
+    bundleURL: string
+): {
+    activation: Promise<void>
+    deactivate: () => Promise<void>
+} {
+    console.log(
+        'TODO!(sqs): check origin, see https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage#Security_concerns'
+    )
+    console.log('TODO!(sqs)')
+    console.log('TODO!(sqs)')
+    console.log('TODO!(sqs)')
+    console.log('TODO!(sqs)')
+    console.log('TODO!(sqs)')
+    console.log('TODO!(sqs)')
+    console.log('TODO!(sqs)')
+
+    // Load the extension bundle and retrieve the extension entrypoint module's exports on
+    // the global `module` property.
+    try {
+        ;(self as any).exports = {}
+        ;(self as any).module = {}
+        ;(self as any).importScripts(bundleURL)
+    } catch (error) {
+        throw Object.assign(new Error('error executing extension bundle (in importScripts)'), { error })
+    }
+    const extensionExports = (self as any).module.exports
+    delete (self as any).exports
+    delete (self as any).module
+
+    return {
+        // Wrap in Promise constructor so that the behavior is consistent for both sync and async
+        // activate functions that throw errors. Both cases should yield a rejected promise.
+        activation: new Promise<void>((resolve, reject) => {
+            if ('activate' in extensionExports) {
+                // This will yield a rejected promise if activation throws or rejects.
+                resolve(extensionExports.activate())
+            } else {
+                reject(new Error(`error activating extension: extension did not export an 'activate' function`))
+            }
+        }),
+        deactivate: async () => {
+            if ('deactivate' in extensionExports) {
+                try {
+                    await Promise.resolve(extensionExports.deactivate())
+                } catch (err) {
+                    console.warn(`Extension 'deactivate' function threw an error.`, err)
+                }
+            }
         },
     }
 }

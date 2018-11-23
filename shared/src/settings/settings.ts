@@ -93,7 +93,7 @@ export interface ConfiguredSubject {
     subject: SettingsSubject
 
     /** The subject's settings. */
-    settings: Settings
+    settings: Settings | null
 
     /** The sequential ID number of the settings, used to ensure that edits are applied to the correct version. */
     lastID: number | null
@@ -207,7 +207,7 @@ export function isSettingsValid(settingsCascade: SettingsCascadeOrError): settin
     return (
         settingsCascade.subjects !== null &&
         !isErrorLike(settingsCascade.subjects) &&
-        settingsCascade.subjects.every(subject => subject.settings !== null && !isErrorLike(subject.settings)) &&
+        settingsCascade.subjects.every(subject => !isErrorLike(subject.settings)) &&
         settingsCascade.final !== null &&
         !isErrorLike(settingsCascade.final)
     )

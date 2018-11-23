@@ -2,7 +2,7 @@ import { filter, first } from 'rxjs/operators'
 import * as sourcegraph from 'sourcegraph'
 import { Controller } from '../client/controller'
 import { Environment } from '../client/environment'
-import { createExtensionHost } from '../extension/extensionHost'
+import { startExtensionHost } from '../extension/extensionHost'
 import { createMessageTransports } from '../protocol/jsonrpc2/helpers.test'
 
 const FIXTURE_ENVIRONMENT: Environment = {
@@ -45,7 +45,7 @@ export async function integrationTestContext(): Promise<
     // Ack all configuration updates.
     clientController.configurationUpdates.subscribe(({ resolve }) => resolve(Promise.resolve()))
 
-    const extensionHost = createExtensionHost(
+    const extensionHost = startExtensionHost(
         {
             bundleURL: '',
             sourcegraphURL: 'https://example.com',
